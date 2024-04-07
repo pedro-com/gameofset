@@ -1,0 +1,5 @@
+tk
+ttkbootstrap
+customtkinter
+pillow
+numpy

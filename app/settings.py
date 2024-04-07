@@ -1,0 +1,22 @@
+# General Settings
+APP_ICON = 'assets/IconSET.png'
+MENU_DARK_ICON = 'assets/MenuButtonDark.png'
+MENU_LIGHT_ICON = 'assets/MenuButtonLight.png'
+
+FONT = 'Calibri'
+TITLE_TEXT_SIZE = 40
+BUTTON_TEXT_SIZE = 20
+NORMAL_TEXT_SIZE = 12
+
+# Color Settings
+PRIMARY_COLOR = '#C86A2B'
+SECONDARY_COLOR = '#CB9041'
+ACCENT_COLOR = '#E3B946'
+BG_COLOR = '#F5EBDF'
+
+# Content Settings
+TITLE_TEXT_COLOR = '#F5EBDF'
+
+BACKGROUND_COLOR = '#F5EBDF'
+BUTTON_COLOR = '#852B0C'
+
