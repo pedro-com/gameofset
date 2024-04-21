@@ -3,3 +3,4 @@ ttkbootstrap
 customtkinter
 pillow
 numpy
+sympy
