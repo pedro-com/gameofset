@@ -3,6 +3,19 @@ from typing import Any, Tuple
 import customtkinter as ctk
 from settings import *
 
+def game_button(master, text:str, command = lambda: (), text_color:str=BG_COLOR, state:str="normal", font:ctk.CTkFont = None, border_width=BD_WIDTH):
+    return ctk.CTkButton(master,
+        fg_color=BUTTON_COLOR,
+        hover_color=ACCENT_COLOR,
+        border_width=border_width,
+        border_color=ACCENT_COLOR,
+        font=font,
+        state=state,
+        text=text,
+        text_color=text_color,
+        command=command
+    )
+
 class ProgressTracker(ctk.CTkFrame):
     def __init__(self, master, max_value:int,
             fg_color = BG_COLOR,

@@ -5,7 +5,7 @@ import customtkinter as ctk
 from PIL import Image
 
 from .image_card import ImageCard
-from .my_widgets import ProgressTracker, TextOutput, Timer
+from .custom_widgets import ProgressTracker, TextOutput, Timer, game_button
 from set_components.set_game import SETGame
 from card_draw.draw_set_structure import SETStructureDraw
 from settings import *
@@ -18,6 +18,8 @@ GAME_SETTINGS = {
     "game_time": 270
 }
 
+def init_game(game_name: str, game_options: Dict):
+    a = 0
 # PADX = 10
 # PADY = 10
 class GamePanel(ctk.CTkFrame):
@@ -35,26 +37,18 @@ class GamePanel(ctk.CTkFrame):
     score_meter: ProgressTracker
     timer: Timer
 
-    def __init__(self, master, bg_color: str | Tuple[str] = BACKGROUND_COLOR, fg_color: str | Tuple[str] | None = BACKGROUND_COLOR):
+    def __init__(self,
+            master,
+            bg_color: str | Tuple[str] = BACKGROUND_COLOR,
+            fg_color: str | Tuple[str] | None = BACKGROUND_COLOR,
+            info_panel_rel_width: float = 0.75
+        ):
         super().__init__(master, bg_color = bg_color, fg_color = fg_color)
+        self.info_panel_rel_width = info_panel_rel_width
         self.content_cards = None
         self.generate_content_panel()
         self.generate_info_panel()
         self.start_game()
-    
-    @staticmethod
-    def game_button(master, text:str, command = lambda: (), text_color:str=BG_COLOR, state:str="normal", font:ctk.CTkFont = None, border_width=BD_WIDTH):
-        return ctk.CTkButton(master,
-            fg_color=BUTTON_COLOR,
-            hover_color=ACCENT_COLOR,
-            border_width=border_width,
-            border_color=ACCENT_COLOR,
-            font=font,
-            state=state,
-            text=text,
-            text_color=text_color,
-            command=command
-        )
     
     def generate_card(self, master, card_image: Image, card_id: Tuple[int]):
         return ImageCard(master, image=card_image, card_id=card_id, bg_color="white", is_button=True, card_function=self.select_card)
@@ -157,9 +151,9 @@ class GamePanel(ctk.CTkFrame):
         self.content_panel.columnconfigure(tuple(range(self.content_columns)), uniform = 'a', weight = 1)
         # SET! button
         font = ctk.CTkFont(family = GAME_BUTTON_FONT, size = GAME_BUTTON_TEXT_SIZE, weight = "bold")
-        self.set_button = self.game_button(self.content_panel, text = SET, font = font, command = self.play_selection)
+        self.set_button = game_button(self.content_panel, text = SET, font = font, command = self.play_selection)
         self.set_button.grid(row = self.content_rows - 1, column = 0, columnspan = self.content_columns, sticky = 'nsew', padx = PADX, pady = PADY)
-        self.content_panel.place(relx = 0, rely = 0, relwidth = 0.75, relheight = 1)
+        self.content_panel.place(relx = 0, rely = 0, relwidth = 1 - self.info_panel_rel_width, relheight = 1)
     
     def generate_info_panel(self):
         self.info_panel = ctk.CTkFrame(self, fg_color = SECONDARY_COLOR, corner_radius=0) #, border_width=2, border_color=ACCENT_COLOR)
@@ -172,9 +166,9 @@ class GamePanel(ctk.CTkFrame):
         self.game_label = TextOutput(self.info_panel, text = REM_CARDS % (0,))
         # Info buttons
         button_font = ctk.CTkFont(family = INFO_BUTTON_FONT, size = INFO_BUTTON_TEXT_SIZE, weight = 'bold')
-        how_to_play = self.game_button(self.info_panel, text = HOWTO, font = button_font)
-        restart_game = self.game_button(self.info_panel, text = RESTART, font = button_font, command = self.start_game)
-        game_config =  self.game_button(self.info_panel, text = OPTIONS, font = button_font)
+        how_to_play = game_button(self.info_panel, text = HOWTO, font = button_font)
+        restart_game = game_button(self.info_panel, text = RESTART, font = button_font, command = self.start_game)
+        game_config = game_button(self.info_panel, text = OPTIONS, font = button_font)
         # Place the widgets
         self.score_meter.grid(row = 0, sticky = 'nsew', padx = PADX, pady = PADY)
         self.timer.grid(row = 1, sticky = 'nsew', padx = PADX, pady = PADY)
@@ -182,4 +176,4 @@ class GamePanel(ctk.CTkFrame):
         how_to_play.grid(row = 3, sticky = 'nsew', padx = PADX, pady = PADY)
         restart_game.grid(row = 4, sticky = 'nsew', padx = PADX, pady = PADY)
         game_config.grid(row = 5, sticky = 'nsew', padx = PADX, pady = PADY)
-        self.info_panel.place(relx = 0.75, rely = 0, relwidth = 0.25, relheight = 1)
+        self.info_panel.place(relx = 0.75, rely = 0, relwidth = self.info_panel_rel_width, relheight = 1)

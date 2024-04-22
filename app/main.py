@@ -1,7 +1,7 @@
 import os
 # os.chdir('app')
 import tkinter as tk
-from app_content.header import Header
+from app.app_content.app_header import Header
 from app_content.game_content import GamePanel
 from settings import *
 
