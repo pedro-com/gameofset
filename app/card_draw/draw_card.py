@@ -1,18 +1,7 @@
 from typing import Tuple
 from PIL import Image, ImageDraw
 
-ATTRIBUTE_TABLE = (
-    (1, 2, 3, 4, 5), # Number of shapes
-    ((255, 0, 0, 255), (0, 255, 0, 255), (0, 0, 255, 255), (0, 255, 255, 255), (255, 0, 255, 255)), # Available colors
-    ("circle", "squiggle", "diamond", "square", "triangle"), # Available shapes
-    ("fill", "empty", "stripped_v", "circle_p", "stripped_h"), # Available patterns
-)
-TRANSPARENT = (0, 0, 0, 0)
-CARD_WIDTH = 100
-CARD_HEIGHT = 300
-CARD_PADX = 20
-CARD_PADY = 40
-BD_WIDTH = 5
+from .draw_settings import *
 
 def get_value(card:Tuple[int], idx:int):
     '''Get all the values for a card (the card can have less attributes than the max)'''
@@ -43,11 +32,8 @@ class CardImageDraw:
     
     @staticmethod
     def card_attributes(card: Tuple[int]):
-        return {
-            "n_figures": ATTRIBUTE_TABLE[0][get_value(card, 0)],
-            "color": ATTRIBUTE_TABLE[1][get_value(card, 1)],
-            "shape": ATTRIBUTE_TABLE[2][get_value(card, 2)],
-            "pattern": ATTRIBUTE_TABLE[3][get_value(card, 3)]
+        return {att_id: ATTRIBUTE_VALUES[idx][get_value(card, idx)]
+            for idx, att_id in enumerate(ATTRIBUTE_ORDER)
         }
     
     def _shape_centers(self, n_shapes:int):
@@ -203,34 +189,34 @@ class CardImageDraw:
             size = (self.canvas_width, self.canvas_height),
             color = card_bg or self.def_card_bg
         )
-        if attributes["pattern"] in ("fill", "empty"):
-            fill = attributes["pattern"] == "fill"
-        elif attributes["pattern"] in ("stripped_h", "stripped_v"):
+        if attributes["shape_fill"] in ("fill", "empty"):
+            fill = attributes["shape_fill"] == "fill"
+        elif attributes["shape_fill"] in ("stripped_h", "stripped_v"):
             self._draw_strip_pattern(card_image,
-                pattern = attributes["pattern"],
+                pattern = attributes["shape_fill"],
                 color = attributes["color"]
             )
             self._draw_cleanup_strip_pattern(card_image,
-                n_shapes = attributes["n_figures"],
-                pattern = attributes["pattern"],
+                n_shapes = attributes["n_shapes"],
+                pattern = attributes["shape_fill"],
                 color = attributes["color"]
             )
             self._draw_shapes(card_image,
-                n_shapes=attributes["n_figures"],
+                n_shapes=attributes["n_shapes"],
                 shape_id=attributes["shape"],
                 color=(255, 255, 255, 255),
                 fill=False
             )
             ImageDraw.floodfill(card_image, (0, 0), card_bg or TRANSPARENT)
             fill = False
-        elif attributes["pattern"] in ("circle_p"):
+        elif attributes["shape_fill"] in ("circle_p"):
             self._draw_center_circles(card_image,
-                n_shapes = attributes["n_figures"],
+                n_shapes = attributes["n_shapes"],
                 color=attributes["color"]
             )
             fill = False
         self._draw_shapes(card_image,
-            n_shapes=attributes["n_figures"],
+            n_shapes=attributes["n_shapes"],
             shape_id=attributes["shape"],
             color=attributes["color"],
             fill=fill

@@ -1,9 +1,9 @@
-from typing import Tuple
+from typing import Tuple, Iterable
 from random import sample
 from itertools import combinations
 
 from .set_deck import SETDeck
-from settings import *
+from .game_settings import *
 
 class SETGame(SETDeck):
     def __init__(self, n_attributes:int, n_attribute_values:int, set_score:int = 300):
@@ -13,10 +13,6 @@ class SETGame(SETDeck):
     @property
     def max_score(self):
         return int(len(self.deck_cards) // self.n_attribute_values) * self.set_score
-    
-    @property
-    def table_size(self):
-        return self.n_attributes*self.n_attribute_values
     
     def is_valid_selection(self, num_cards:int):
         return num_cards == self.n_attribute_values
@@ -77,7 +73,7 @@ class SETGame(SETDeck):
         self.table_cards = self.table_cards | refill_cards
         return refill_cards
     
-    def play_round(self, cards: Tuple[int]):
+    def play_round(self, cards: Iterable[Tuple[int]]):
         '''
         Check if the selected cards are a SET and in the table. Returns the newly drawn cards.
         Returns None if the passed cards are not a SET

@@ -6,7 +6,7 @@ from random import sample
 
 from tkinter import IntVar, StringVar
 
-from settings import *
+from .game_settings import *
 from . import mod_vector as mv
 
 def in_constraint(p, p_min, p_max, include_min = True, include_max = True):
@@ -43,8 +43,8 @@ class SETDeck(ABC):
     score: IntVar = field(init = False)
     game_state: StringVar = field(init = False)
     def __post_init__(self):
-        if not in_constraint(self.n_attributes, 1, 4) or self.n_attribute_values not in (3, 5):
-            raise ValueError(self.n_attributes, self.n_attribute_values)
+        if self.n_attributes not in N_ATTRIBUTES or self.n_attribute_values not in N_ATTRIBUTE_VALUES:
+            raise ValueError(f'Attribute number, {self.n_attributes}, or Attribute posible values, {self.n_attribute_values} not in possible ranges')
         # Deck variables init
         self.deck_cards = self.generate_deck()
         self.table_cards = frozenset()
@@ -52,7 +52,11 @@ class SETDeck(ABC):
         # Game state variables
         self.score = None
         self.game_state = None
-    
+
+    @property
+    def table_size(self):
+        return self.n_attributes*self.n_attribute_values
+
     @property
     def table_state(self):
         '''Represents the number of cards remaining on the table and the deck.'''
@@ -80,9 +84,9 @@ class SETDeck(ABC):
         if timer_end:
             self.game_state.set(WIN_GAME if self.is_game_end() else LOSE_GAME)
             return
-        if self.is_game_end(): # Just in Case
-            self.game_state.set(WIN_GAME)
-            return
+        # if self.is_game_end(): # Just in Case
+        #     self.game_state.set(WIN_GAME)
+        #     return
         total_cards = len(self.deck_cards)
         message_out = message + CARDS_REMAINING if message else CARDS_REMAINING
         self.game_state.set(message_out % (total_cards - len(self.rem_cards | self.table_cards), total_cards))
@@ -108,17 +112,29 @@ class SETDeck(ABC):
     
     def is_interset(self, cards: Iterable[Tuple[int]]):
         '''Check if a list of cards is an interset (2 intersecting SETs without the intersection card)'''
-        if not len(cards) == self.n_attribute_values*2 - 2:
+        if len(cards) != self.n_attribute_values*2 - 2:
             return False
         return any(self.complete_set(*cards1) == self.complete_set(*cards2)
             for cards1, cards2 in combination_pairs(cards, 2)
         )
     
-    def is_comet(self, cards:Iterable[Tuple[int]]):
-        if not len(cards) == self.n_attribute_values*2 - 2:
+    def is_planet(self, cards: Iterable[Tuple[int]]):
+        if len(cards) != 2*(self.n_attribute_values - 1):
             return False
-        contains_set = any(self.is_set(card_comb) for card_comb in combinations(cards, 3))
-        return contains_set or self.is_interset(cards)
+        p0, base = mv.affine_to_cartesian(tuple(cards), self.n_attribute_values)
+        if len(base) != 2:
+            return False
+        plane = frozenset(mv.generate_mod_affine_space(p0, base, self.n_attribute_values))
+        return frozenset(cards) < plane
+
+    def is_comet(self, cards:Iterable[Tuple[int]]):
+        if len(cards) != self.table_size:
+            return False
+        p0, base = mv.affine_to_cartesian(tuple(cards), self.n_attribute_values)
+        if len(base) != 2:
+            return False
+        plane = frozenset(mv.generate_mod_affine_space(p0, base, self.n_attribute_values))
+        return frozenset(cards) == plane
     
     def is_magic_square(self, cards:Iterable[Tuple[int]]):
         '''Also known as is_planet, checks if a list of cards is a plane (also known as a magic square)'''
@@ -137,7 +153,7 @@ class SETDeck(ABC):
     
     def all_sets(self, cards:Iterable[Tuple[int]]):
         card_combinations = combinations(cards, self.n_attribute_values)
-        return (cards for cards in card_combinations if self.is_set(cards))
+        return tuple(cards for cards in card_combinations if self.is_set(cards))
     
     def _possible_intersets(self, cards:Iterable[Tuple[int]]):
         cards = frozenset(cards)
@@ -154,7 +170,7 @@ class SETDeck(ABC):
                 intersets[int_card] = [interset]
             else:
                 intersets[int_card].append(interset)
-        return ((int_card, interset_l) for int_card, interset_l in intersets.items() if len(interset_l) > 1)
+        return tuple((int_card, interset_l) for int_card, interset_l in intersets.items() if len(interset_l) > 1)
     
     def card_structure(self, cards:Iterable[Tuple[int]]):
         '''

@@ -56,11 +56,12 @@ def generate_mod_affine_space(p0, base: Iterable, mod:int):
 
 def affine_to_cartesian(affine_reference: List[Tuple[int]], mod:int):
     p0 = affine_reference[0]
-    v = [mod_sub(p, p0, mod) for p in affine_reference[1:]]
-    if not v:
+    vector = (mod_sub(p, p0, mod) for p in affine_reference[1:])
+    vector = [v for v in vector if not is_zero(v)]
+    if not vector:
         return p0, []
-    base = [v[0]]
-    for vi in v[1:]:
+    base = [vector[0]]
+    for vi in vector[1:]:
         new_base = base + [vi]
         if is_linear_indepent(new_base):
             base = new_base
@@ -73,7 +74,7 @@ def add_points(p, v:Tuple[int], mod:int):
 
 def generate_affine_space_structure(affine_reference: Iterable[Tuple[int]], mod:int):
     '''Generates an affine space, from the reference provided with the structure defined in lines, planes, hyperplanes'''
-    p0, base = affine_to_cartesian(affine_reference, mod)
+    p0, base = affine_to_cartesian(tuple(affine_reference), mod)
     points = p0
     if not base:
         return points

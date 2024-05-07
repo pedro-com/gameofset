@@ -4,7 +4,7 @@ from set_components.set_deck import SETDeck
 from set_components.set_deck import combination_pairs
 import set_components.mod_vector as mv
 from card_draw.draw_set_structure import SETStructureDraw
-from settings import *
+from app.settings import *
 def auto_play(set_game: SETDeck):
     print(list(set_game.all_intersets(set_game.table_cards)))
     while set_game.check_table():

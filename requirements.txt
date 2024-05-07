@@ -4,3 +4,5 @@ customtkinter
 pillow
 numpy
 sympy
+pylint
+black
