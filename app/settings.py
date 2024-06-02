@@ -34,7 +34,7 @@ OPTIONS = "Options"
 SET = "SET!"
 GENERATE = "Generate Structure"
 INTERSET = "Interset!"
-GUESS_CARD = "Guess Hold Card!\n"
+GUESS_CARD = "Guess Hold Card!"
 
 # Info panel
 UNDERSTOOD = "Understood!"

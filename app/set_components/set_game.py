@@ -7,6 +7,10 @@ from .game_settings import *
 
 
 class SETGame(SETDeck):
+    """
+    SETGame implements the logic for a solitary game of SET.
+    - set_score: The score gained per SET found.
+    """
     def __init__(
         self, n_attributes: int, n_attribute_values: int, set_score: int = 300
     ):
@@ -34,14 +38,10 @@ class SETGame(SETDeck):
 
     def table_sets(self):
         """Function to return the SETs on the table"""
-        # card_combinations = combinations(self.table_cards, self.n_attribute_values)
-        # return [cards for cards in card_combinations if self.is_set(cards)]
         return self.all_sets(self.table_cards)
 
     def check_table(self):
         """Checks if the table has at least one SET"""
-        # card_combinations = combinations(self.table_cards, self.n_attribute_values)
-        # return any(self.is_set(cards) for cards in card_combinations)
         return any(True for _ in self.table_sets())
 
     def _refill_table(self):

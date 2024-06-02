@@ -1,8 +1,7 @@
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple
 
 # from asyncio import run
 import customtkinter as ctk
-from PIL import Image
 
 from . import custom_widgets as cw
 import set_components as sc
@@ -39,6 +38,7 @@ class StructureDrawPanel(ctk.CTkFrame):
         self.set_painter = cd.SETStructureDraw(
             card_resolution=self.options[Options.CARD_QL],
             n_attribute_values=self.options[Options.N_ATTR_V],
+            with_border=self.options[Options.WITH_BORDER]
         )
 
     def create_structure(self):
@@ -60,6 +60,7 @@ class StructureDrawPanel(ctk.CTkFrame):
     def start_draw(self):
         self.options.update(self.option_panel.curr_selection)
         self.download_button.configure(state="disabled")
+        self.generate_button.configure(state="disabled")
         self.init_game()
         # Card Picker Buttons
         for card_picker_button in self.card_picker_buttons:
@@ -80,6 +81,7 @@ class StructureDrawPanel(ctk.CTkFrame):
 
     def reset_buttons(self):
         self.download_button.configure(state="disabled")
+        self.generate_button.configure(state="disabled")
         for card_picker_button in self.card_picker_buttons:
             card_picker_button.reset_button()
 

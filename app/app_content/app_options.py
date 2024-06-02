@@ -17,6 +17,7 @@ class Options:
     INTERSET_SCORE = "interset_score"
     COMET_SCORE = "comet_score"
     PLANET_SCORE = "planet_score"
+    WITH_BORDER = False
 
     OPTION_VALUES: Dict[str, Tuple] = {
         N_ATTR: ("Nº Attributes", (2, 3, 4), "%s"),
@@ -28,11 +29,25 @@ class Options:
         INTERSET_SCORE: ("Interset Score", (100, 300, 600, 700), "%sp"),
         PLANET_SCORE: ("Planet Score", (300, 600, 900, 1200), "%sp"),
         COMET_SCORE: ("Comet Score", (700, 900, 1200, 1800), "%sp"),
+        WITH_BORDER: ("Card Border", (True, False), "%s")
     }
 
 
 SET_GAME_DESCRIPTION = """
-    Description of the game
+    The Objective of the Game
+    is finding three or five
+    cards (depending on the
+    number of values per
+    feature) such that
+    the cards are a SET.
+
+    For three cards to
+    form a SET, each of the
+    four features must be
+    either:
+
+    All the same on each card
+    All different on each card
 """
 END_GAME_DESCRIPTION = """
     Description of the game
@@ -106,7 +121,12 @@ class Modes:
         STRUCTURE_DRAW: {
             "name": "Structure Draw",
             "instructions": STRUCTURE_DESCRIPTION,
-            "options": {Options.N_ATTR: 4, Options.N_ATTR_V: 3, Options.CARD_QL: 2},
+            "options": {
+                Options.N_ATTR: 4,
+                Options.N_ATTR_V: 3,
+                Options.CARD_QL: 2,
+                Options.WITH_BORDER: False
+            }
         },
     }
 

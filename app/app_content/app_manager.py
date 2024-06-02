@@ -6,7 +6,7 @@ from card_draw import ImageCard
 from . import custom_widgets as cw
 from settings import *
 from .game_content import GamePanel
-from .set_structure_painter import StructureDrawPanel
+from .structure_draw_content import StructureDrawPanel
 
 
 class AppModePanel(cw.SlidingFrame):

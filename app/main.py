@@ -1,8 +1,7 @@
 import os
 
 os.chdir("app")
-from app_content.game_content import GamePanel
-from app_content.state_manager import App
+from app_content.app_manager import App
 
 content_window = App(is_min_size=True)
 content_window.mainloop()

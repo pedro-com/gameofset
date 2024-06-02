@@ -30,13 +30,12 @@ class SETDeck(ABC):
     is one attribute and their value is the number, color, shade and shape of the card.
         - n_attributes: Number of attributes of each card (1 <= n <= 4)
         - n_attribute_values: Number of attribute values, can only be prime numbers (3, 5 are the only ones implemented)
-        - set_score: The score per SET
-        - deck_cards: The whole SET deck
-        - table_cards: The cards on the table
-        - rem_cards: The cards remaining in the deck
-        - table_size: Max number of cards in the table
-        - score: Actual score
-        - max_score: Maximum possible score
+        - deck_cards: The whole SET deck.
+        - table_cards: The cards currently on the table.
+        - rem_cards: The cards remaining in the deck.
+        - table_size: Max number of cards in the table.
+        - score: Current game score.
+        - game_state: Current state of the game (Game Start, SET found, Not a SET or Game End).
     """
 
     n_attributes: int
@@ -67,20 +66,14 @@ class SETDeck(ABC):
 
     @property
     def table_size(self):
+        """Table size of the Game"""
         return self.n_attributes * self.n_attribute_values
 
     @property
-    def table_state(self):
+    def table_state_n_cards(self):
         """Represents the number of cards remaining on the table and the deck."""
         total_cards = len(self.deck_cards)
-        return f"{total_cards - len(self.rem_cards | self.table_cards)}/{total_cards}"
-
-    def generate_deck(self):
-        """Generate the whole deck"""
-        all_points = mv.simple_affine_space_gen(
-            self.n_attributes, self.n_attribute_values
-        )
-        return frozenset(all_points)
+        return (total_cards - len(self.rem_cards | self.table_cards), total_cards)
 
     def set_score_tracker(self, score: IntVar):
         self.score = score
@@ -89,33 +82,37 @@ class SETDeck(ABC):
         self.game_state = game_state
 
     def add_score(self, score_to_add: int):
+        """Add the new score value to the current score"""
         if self.score:
             self.score.set(self.score.get() + score_to_add)
 
     def modify_game_state(self, message: str = None, timer_end: bool = False):
+        """
+        Modify the current game state with the passed message and taking into consideration if the game has ended.
+        """
         if not self.game_state:
             return
         if timer_end:
             self.game_state.set(WIN_GAME if self.is_game_end() else LOSE_GAME)
             return
-        # if self.is_game_end(): # Just in Case
-        #     self.game_state.set(WIN_GAME)
-        #     return
-        total_cards = len(self.deck_cards)
         message_out = message + CARDS_REMAINING if message else CARDS_REMAINING
-        self.game_state.set(
-            message_out
-            % (total_cards - len(self.rem_cards | self.table_cards), total_cards)
+        self.game_state.set(message_out % self.table_state_n_cards)
+
+    def generate_deck(self):
+        """Generate the whole deck of cards"""
+        all_points = mv.simple_affine_space_gen(
+            self.n_attributes, self.n_attribute_values
         )
+        return frozenset(all_points)
 
     def complete_set(self, c1: Tuple[int], c2: Tuple[int]):
         """Function to obtain the remaining cards to complete a SET from 2 cards"""
-        v = mv.mod_sub(c2, c1, self.n_attribute_values)
+        v = mv.mod_substraction(c2, c1, self.n_attribute_values)
         vk = (
-            mv.mod_prod(v, k, self.n_attribute_values)
+            mv.mod_product(v, k, self.n_attribute_values)
             for k in range(1, self.n_attribute_values - 1)
         )
-        return frozenset(mv.mod_add(c2, vi, self.n_attribute_values) for vi in vk)
+        return frozenset(mv.mod_addition(c2, vi, self.n_attribute_values) for vi in vk)
 
     def random_set(self):
         """Obtains a random SET from the deck"""
@@ -123,25 +120,20 @@ class SETDeck(ABC):
         return self.complete_set(c1, c2).union((c1, c2))
 
     def is_set(self, cards: Iterable[Tuple[int]]):
-        """Check if a list of cards is a set"""  # TODO checks this works
+        """Checks if a list of cards is a SET"""
         if len(cards) != self.n_attribute_values or not mv.is_zero(
-            mv.mod_add_mult(cards, self.n_attribute_values)
+            mv.mod_mult_addition(cards, self.n_attribute_values)
         ):
             return False
         c1, c2 = tuple(cards)[0:2]
         check_cards = self.complete_set(c1, c2).union((c1, c2))
         return check_cards == frozenset(cards)
 
-    def is_interset(self, cards: Iterable[Tuple[int]]):
-        """Check if a list of cards is an interset (2 intersecting SETs without the intersection card)"""
-        if len(cards) != self.n_attribute_values * 2 - 2:
-            return False
-        return any(
-            self.complete_set(*cards1) == self.complete_set(*cards2)
-            for cards1, cards2 in combination_pairs(cards, 2)
-        )
-
     def is_planet(self, cards: Iterable[Tuple[int]]):
+        """
+        Checks if a list of cards is a planet. A planet is a list of 2*(n_attribute_values - 1) cards, such that all
+        the card belong to the same plane / magic square in SET.
+        """
         if len(cards) != 2 * (self.n_attribute_values - 1):
             return False
         p0, base = mv.affine_to_cartesian(tuple(cards), self.n_attribute_values)
@@ -153,6 +145,7 @@ class SETDeck(ABC):
         return frozenset(cards) < plane
 
     def is_comet(self, cards: Iterable[Tuple[int]]):
+        """Checks if a list of cards is a comet. A comet in SET is a plane / magic square in SET."""
         if len(cards) != self.table_size:
             return False
         p0, base = mv.affine_to_cartesian(tuple(cards), self.n_attribute_values)
@@ -163,28 +156,16 @@ class SETDeck(ABC):
         )
         return frozenset(cards) == plane
 
-    def is_magic_square(self, cards: Iterable[Tuple[int]]):
-        """Also known as is_planet, checks if a list of cards is a plane (also known as a magic square)"""
-        if not len(cards) == self.n_attribute_values * self.n_attribute_values:
-            return False
-        cards = frozenset(cards)
-        test_cards = sample(tuple(cards), 2)
-        vector1 = mv.mod_sub(test_cards[0], test_cards[1], self.n_attribute_values)
-        gen_plane = None
-        for p in cards.difference(test_cards):
-            vector2 = mv.mod_sub(test_cards[0], p, self.n_attribute_values)
-            if mv.is_linear_indepent((vector1, vector2)):
-                gen_plane = mv.generate_mod_affine_space(
-                    test_cards[0], (vector1, vector2), self.n_attribute_values
-                )
-                break
-        return gen_plane and frozenset(gen_plane) == cards
-
     def all_sets(self, cards: Iterable[Tuple[int]]):
+        """Obtains all the SETs contained within cards"""
         card_combinations = combinations(cards, self.n_attribute_values)
         return tuple(cards for cards in card_combinations if self.is_set(cards))
 
     def _possible_intersets(self, cards: Iterable[Tuple[int]]):
+        """
+        Obtains all the possible intersets contained within cards. An interset is possible if the intersection
+        card is not within cards and the rest of the cards of the SET is within cards.
+        """
         cards = frozenset(cards)
         for card_comb in combinations(cards, 2):
             card_set = self.complete_set(*card_comb).union(card_comb)
@@ -193,6 +174,7 @@ class SETDeck(ABC):
                 yield (card_set - card_interset, card_interset)
 
     def all_intersets(self, cards: Iterable[Tuple[int]]):
+        """Obtains all the intersets contained within cards"""
         intersets = {}
         for int_card, interset in self._possible_intersets(cards):
             if int_card not in intersets:
@@ -232,7 +214,33 @@ class SETDeck(ABC):
         """Check if the game has ended. Each game has a different game end condition"""
 
 
-"""
+""" XXX DEPRECATED
+    def is_interset(self, cards: Iterable[Tuple[int]]):
+        # Checks if a list of cards is an interset (2 intersecting SETs without the intersection card)
+        if len(cards) != self.n_attribute_values * 2 - 2:
+            return False
+        return any(
+            self.complete_set(*cards1) == self.complete_set(*cards2)
+            for cards1, cards2 in combination_pairs(cards, 2)
+        )
+
+    def is_magic_square(self, cards: Iterable[Tuple[int]]):
+        # Also known as is_planet, checks if a list of cards is a plane (also known as a magic square)
+        if not len(cards) == self.n_attribute_values * self.n_attribute_values:
+            return False
+        cards = frozenset(cards)
+        test_cards = sample(tuple(cards), 2)
+        vector1 = mv.mod_substraction(test_cards[0], test_cards[1], self.n_attribute_values)
+        gen_plane = None
+        for p in cards.difference(test_cards):
+            vector2 = mv.mod_substraction(test_cards[0], p, self.n_attribute_values)
+            if mv.is_linear_indepent((vector1, vector2)):
+                gen_plane = mv.generate_mod_affine_space(
+                    test_cards[0], (vector1, vector2), self.n_attribute_values
+                )
+                break
+        return gen_plane and frozenset(gen_plane) == cards
+
     Variation of all intersets (DEPRECATED)
     def all_intersets(self, cards:Iterable[Tuple[int]]):
         cards = frozenset(cards)

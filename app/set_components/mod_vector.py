@@ -1,37 +1,43 @@
+"""
+    Module for operations in the Finite Affine Space.
+"""
 from typing import Tuple, Iterable, List
 import numpy as np
 import sympy as sm
 
 
-def mod_add(x: Tuple[int], y: Tuple[int], mod: int):
-    """Modular add of two vector tuples, such that the resulting vector has the same lenght as the smallest"""
-    return tuple((xi + yi) % mod for xi, yi in zip(x, y))
+def mod_addition(x: Tuple[int], y: Tuple[int], m: int):
+    """Modular addition of two vector tuples, such that the resulting vector has the same length as the smallest"""
+    return tuple((xi + yi) % m for xi, yi in zip(x, y))
 
 
-def mod_add_mult(x_p: Iterable[Tuple[int]], mod: int):
+def mod_mult_addition(x_p: Iterable[Tuple[int]], m: int):
+    """Modular addition of multiple vectors"""
     total = None
     for xi in x_p:
-        total = mod_add(total, xi, mod) if total else xi
+        total = mod_addition(total, xi, m) if total else xi
     return total
 
 
-def mod_sub(x: Tuple[int], y: Tuple[int], mod: int):
+def mod_substraction(x: Tuple[int], y: Tuple[int], m: int):
     """Modular substraction of two vector tuples, such that the resulting vector has the same lenght as the smallest"""
-    return tuple((xi - yi) % mod for xi, yi in zip(x, y))
+    return tuple((xi - yi) % m for xi, yi in zip(x, y))
 
 
-def mod_prod(x: Tuple[int], k: int, mod: int):
-    return tuple((k * xi) % mod for xi in x)
+def mod_product(x: Tuple[int], k: int, m: int):
+    """Modular scalar product between a value k and a vector x"""
+    return tuple((k * xi) % m for xi in x)
 
 
 def is_zero(x: Tuple[int]):
+    """Checks if the vector x is zero."""
     return all(xi == 0 for xi in x)
 
 
 def is_linear_indepent(v: Iterable):
     """Checks that the list of vectors, v, passed is linearly independent"""
     matrix = np.matrix(v)
-    _, inds = sm.Matrix(matrix).T.rref()  # <found on the internet>
+    _, inds = sm.Matrix(matrix).T.rref()
     return len(inds) == len(v)
 
 
@@ -42,32 +48,35 @@ def cartesian_reference(n: int):
     """
     point = np.zeros(n, dtype=int)
     reference = [point.copy()]
+    # Adds e_k to the vector base
     for k in range(n):
         point[k] = 1
         reference.append(point.copy())
         point[k] = 0
     return reference[0], reference[1:]
 
-
-def simple_affine_space_gen(n: int, m: int):
-    p0, base = cartesian_reference(n)
-    return generate_mod_affine_space(p0, base, m)
-
-
-def generate_mod_affine_space(p0, base: Iterable, mod: int):
+def generate_mod_affine_space(p0, base: Iterable, m: int):
+    """Generate all the points in an affine finite space of order m, centered at p0 and the group of vectors, base"""
     affine_space = [tuple(p0)]
     new_points = []
+    # Add new points every iteration, by adding the vector v_k from the vector base
     for ei in base:
-        for vk in (mod_prod(ei, k, mod) for k in range(1, mod)):
-            new_points.extend((mod_add(p, vk, mod) for p in affine_space))
+        for vk in (mod_product(ei, k, m) for k in range(1, m)):
+            new_points.extend((mod_addition(p, vk, m) for p in affine_space))
         affine_space.extend(new_points)
         new_points = []
     return affine_space
 
+def simple_affine_space_gen(n: int, m: int):
+    """Generate all the points for an affine finite space AG(n, m)"""
+    p0, base = cartesian_reference(n)
+    return generate_mod_affine_space(p0, base, m)
 
-def affine_to_cartesian(affine_reference: List[Tuple[int]], mod: int):
+
+def affine_to_cartesian(affine_reference: List[Tuple[int]], m: int):
+    """Transforms an affine reference of points into a cartesian reference."""
     p0 = affine_reference[0]
-    vector = (mod_sub(p, p0, mod) for p in affine_reference[1:])
+    vector = (mod_substraction(p, p0, m) for p in affine_reference[1:])
     vector = [v for v in vector if not is_zero(v)]
     if not vector:
         return p0, []
@@ -79,20 +88,27 @@ def affine_to_cartesian(affine_reference: List[Tuple[int]], mod: int):
     return p0, base
 
 
-def add_points(p, v: Tuple[int], mod: int):
-    if isinstance(p, list):
-        return [add_points(item, v, mod) for item in p]
-    return [mod_add(p, mod_prod(v, i, mod), mod) for i in range(mod)]
+def _add_points(current_points: Iterable, v: Tuple[int], m: int):
+    """
+    Recursive function to add new points to the current_points. If current_points is a single point, adds the line of
+    points generated from the point in current points and the vector v. If current_points is a list of items, where an
+    item could be either a point or another list of points, calls _add_points in said items.
+    """
+    if isinstance(current_points, list):
+        return [_add_points(item, v, m) for item in current_points]
+    return [mod_addition(current_points, mod_product(v, i, m), m) for i in range(m)]
 
 
-def generate_affine_space_structure(affine_reference: Iterable[Tuple[int]], mod: int):
-    """Generates an affine space, from the reference provided with the structure defined in lines, planes, hyperplanes"""
-    p0, base = affine_to_cartesian(tuple(affine_reference), mod)
+def generate_affine_space_structure(affine_reference: Iterable[Tuple[int]], m: int):
+    """
+    Generates an affine finite space from the reference provided with the structure defined in lines, planes, hyperplanes.
+    """
+    p0, base = affine_to_cartesian(tuple(affine_reference), m)
     points = p0
     if not base:
         return points
     for vi in base:
-        points = add_points(points, vi, mod)
+        points = _add_points(points, vi, m)
     return points
 
 

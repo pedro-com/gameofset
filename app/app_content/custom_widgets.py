@@ -31,6 +31,153 @@ def custom_button(
         command=command,
     )
 
+class SlidingFrame(ctk.CTkFrame):
+    def __init__(
+        self,
+        master,
+        rel_start: Tuple[float, float],
+        rel_end: Tuple[float, float],
+        rel_width: float,
+        rel_height: float,
+        corner_radius: int | str | None = 10,
+        border_width: int | str | None = BD_WIDTH,
+        fg_color: str | Tuple[str] | None = PRIMARY_COLOR,
+        border_color: str | Tuple[str] | None = ACCENT_COLOR,
+        animation_steps: int = 5,
+        anchor: str = "nw",
+    ):
+        super().__init__(
+            master,
+            corner_radius=corner_radius,
+            border_width=border_width,
+            fg_color=fg_color,
+            border_color=border_color,
+        )
+        # Init variables
+        self.rel_start = rel_start
+        self.rel_end = rel_end
+        self.rel_width = rel_width
+        self.rel_height = rel_height
+        self.anchor = anchor
+        self.delta = tuple(
+            (self.rel_end[k] - self.rel_start[k]) / animation_steps for k in range(2)
+        )
+        self.actual_pos = self.rel_start
+        self.move_to_end = False
+        self.prev_move = None  # To cancel mid animation
+        # Init and place buttons
+        self.move_widget(self.rel_start)
+
+    def move_widget(self, rel_pos: Tuple[float, float], lift: bool = True):
+        """
+        Places the frame at at the rel_pos, removing the previous placement to
+        simulate movement.
+        """
+        if rel_pos in (self.rel_start, self.rel_end):
+            pos_bound_x = rel_pos[0] + self.rel_width
+            pos_bound_y = rel_pos[1] + self.rel_height
+            if (rel_pos[0] < 0 or pos_bound_x > 1) or (
+                pos_bound_y < 0 or pos_bound_y > 1
+            ):
+                self.place_forget()
+                return
+        self.place(
+            relx=rel_pos[0],
+            rely=rel_pos[1],
+            relwidth=self.rel_width,
+            relheight=self.rel_height,
+            anchor=self.anchor,
+        )
+        if lift:
+            self.lift()
+
+    def _next_pos(self, dir: int):
+        """Obtains the next frame position to move to."""
+        delta = self.delta[dir]
+        actual_pos = self.actual_pos[dir]
+        if delta == 0:
+            return actual_pos
+        if self.move_to_end:
+            actual_pos += delta
+            return (
+                max(self.rel_end[dir], actual_pos)
+                if delta < 0
+                else min(self.rel_end[dir], actual_pos)
+            )
+        actual_pos -= delta
+        return (
+            min(self.rel_start[dir], actual_pos)
+            if delta < 0
+            else max(self.rel_start[dir], actual_pos)
+        )
+
+    def _move(self):
+        """Moves the frame while not at the start or end position"""
+        self.actual_pos = tuple(self._next_pos(dir) for dir in range(2))
+        self.move_widget(self.actual_pos)
+        if self.actual_pos not in (self.rel_start, self.rel_end):
+            # self.move_widget(self.actual_pos)
+            self.after(10, self._move)
+        else:
+            self.prev_move = None
+
+    def move(self):
+        """Starts the frame movement to the other position"""
+        if self.prev_move:
+            self.after_cancel(self.prev_move)
+        self.move_to_end = not self.move_to_end
+        self._move()
+
+    def quick_move(self):
+        """Performs an instant move to the other position"""
+        if self.prev_move:
+            self.after_cancel(self.prev_move)
+        self.actual_pos = self.rel_start if self.move_to_end else self.rel_end
+        self.move_widget(self.actual_pos)
+        self.move_to_end = not self.move_to_end
+
+class TextOutput(ctk.CTkFrame):
+    def __init__(
+        self,
+        master,
+        fg_color=BG_COLOR,
+        component_color=SECONDARY_COLOR,
+        border_color=ACCENT_COLOR,
+        border_width=BD_WIDTH,
+        corner_radius=10,
+        font=None,
+        text="TextValue",
+        anchor="center",
+    ):
+        super().__init__(
+            master,
+            corner_radius=corner_radius,
+            border_width=border_width,
+            fg_color=fg_color,
+            border_color=border_color,
+        )
+        self.text = StringVar(value=text)
+        self.text_label = ctk.CTkLabel(
+            self,
+            fg_color=component_color,
+            corner_radius=corner_radius,
+            text_color=fg_color,
+            text=text,
+            font=font,
+            anchor=anchor,
+            compound="left"
+        )
+        self.text.trace_add("write", self.modify_label)
+        self.text_label.pack(fill="both", expand=True, padx=PADX, pady=PADY)
+        self.bind(
+            "<Configure>",
+            lambda e: self.text_label.configure(
+                wraplength=master.winfo_width() - 3 * PADX
+            ),
+        )
+
+    def modify_label(self, *args):
+        self.text_label.configure(text=self.text.get())
 
 def info_panel(
     master,
@@ -42,6 +189,7 @@ def info_panel(
     font: ctk.CTkFont = None,
     dismiss_action: Callable[[None], None] = lambda: (),
 ):
+    """Creates an Info Panel to show information to the user"""
     slide_panel = SlidingFrame(master, rel_start, rel_end, rel_width, rel_height)
     slide_panel.rowconfigure(0, weight=3, uniform="a")
     slide_panel.rowconfigure(1, weight=1, uniform="a")
@@ -61,7 +209,6 @@ def info_panel(
     # Update the Wrap of the text
     # text_output.update_wrap()
     return slide_panel
-
 
 class ProgressTracker(ctk.CTkFrame):
     def __init__(
@@ -114,6 +261,10 @@ class ProgressTracker(ctk.CTkFrame):
         self.progress_bar.grid(row=1, sticky="ew", padx=PADX)
 
     def _modify_values(self, *args):
+        """
+        Modifies the actual value of the progress var and the value at
+        the label text
+        """
         value = self.actual_value.get()
         if value < 0:
             self.actual_value.set(0)
@@ -122,8 +273,8 @@ class ProgressTracker(ctk.CTkFrame):
         self.progress_bar.set(max(value / self.max_value, 0))
 
     def modify_max_value(self, max_value: int):
+        """Modifies the max value of the progress tracker"""
         self.max_value = max_value
-
 
 class Timer(ProgressTracker):
     def __init__(
@@ -154,6 +305,9 @@ class Timer(ProgressTracker):
         self.prev_after = ""
 
     def time_loop(self):
+        """
+        Awaits 1 second to change the timer value, while end is not true
+        """
         if not self.is_end.get():
             actual_time = self.actual_value.get() - 1
             self.actual_value.set(actual_time)
@@ -162,58 +316,16 @@ class Timer(ProgressTracker):
             self.prev_after = self.after(1000, self.time_loop)
 
     def start(self):
+        """Starts the timer countdown"""
         self.actual_value.set(self.max_value + 1)
         self.is_end.set(False)
         self.time_loop()
 
     def reset(self):
+        """Resets the timer to the maximum time, and sets the end to true"""
         if not self.is_end.get():
             self.is_end.set(True)
             self.after_cancel(self.prev_after)
-
-
-class TextOutput(ctk.CTkFrame):
-    def __init__(
-        self,
-        master,
-        fg_color=BG_COLOR,
-        component_color=SECONDARY_COLOR,
-        border_color=ACCENT_COLOR,
-        border_width=BD_WIDTH,
-        corner_radius=10,
-        font=None,
-        text="TextValue",
-        anchor="center",
-    ):
-        super().__init__(
-            master,
-            corner_radius=corner_radius,
-            border_width=border_width,
-            fg_color=fg_color,
-            border_color=border_color,
-        )
-        self.text = StringVar(value=text)
-        self.text_label = ctk.CTkLabel(
-            self,
-            fg_color=component_color,
-            corner_radius=corner_radius,
-            text_color=fg_color,
-            text=text,
-            font=font,
-            anchor=anchor,
-        )
-        self.text.trace_add("write", self.modify_label)
-        self.text_label.pack(fill="both", expand=True, padx=PADX, pady=PADY)
-        self.bind(
-            "<Configure>",
-            lambda e: self.text_label.configure(
-                wraplength=master.winfo_width() - 3 * PADX
-            ),
-        )
-
-    def modify_label(self, *args):
-        self.text_label.configure(text=self.text.get())
-
 
 class FileNameInput(ctk.CTkFrame):
     def __init__(
@@ -264,18 +376,22 @@ class FileNameInput(ctk.CTkFrame):
         self.output.pack(fill="x", padx=PADX, pady=PADY)
 
     def update_text(self, *args):
+        """Updates the file name text and extension in the label"""
         file_name = self.get_file_name()
         self.output.configure(text=file_name if file_name else "")
 
     def get_file_name(self):
+        """Obtains the file name parsing the spaces to _ and adding the extension"""
         name = self.name.get().replace(" ", "_")
         ext = self.file_ext.get()
         return f"{name}.{ext}" if name else None
 
     def set_ext(self, ext: str):
+        """Sets the file extension"""
         self.file_ext.set(ext)
 
     def create_ext_frame(self, component_color, font):
+        """Creates all the widgets within the frame"""
         ext_frame = ctk.CTkFrame(self, fg_color="transparent")
         jpg_check = ctk.CTkCheckBox(
             ext_frame,
@@ -302,7 +418,6 @@ class FileNameInput(ctk.CTkFrame):
         jpg_check.pack(side="left", fill="both", padx=PADX, pady=PADY)
         png_check.pack(side="left", fill="both", padx=PADX, pady=PADY)
         ext_frame.pack(fill="x", padx=PADX, pady=PADY)
-
 
 class FilePathInput(ctk.CTkFrame):
     def __init__(
@@ -341,109 +456,12 @@ class FilePathInput(ctk.CTkFrame):
         ).pack(fill="both", expand=True, padx=PADX, pady=PADY)
 
     def select_file_directory(self):
-        self.path.set(filedialog.askdirectory())
+        """Opens a filedialog to select the output directory"""
+        self.path.set(filedialog.askdirectory(initialdir="~"))
 
     def get_directory_path(self):
+        """Returns the current directory path"""
         return self.path.get()
-
-
-class SlidingFrame(ctk.CTkFrame):
-    def __init__(
-        self,
-        master,
-        rel_start: Tuple[float, float],
-        rel_end: Tuple[float, float],
-        rel_width: float,
-        rel_height: float,
-        corner_radius: int | str | None = 10,
-        border_width: int | str | None = BD_WIDTH,
-        fg_color: str | Tuple[str] | None = PRIMARY_COLOR,
-        border_color: str | Tuple[str] | None = ACCENT_COLOR,
-        animation_steps: int = 5,
-        anchor: str = "nw",
-    ):
-        super().__init__(
-            master,
-            corner_radius=corner_radius,
-            border_width=border_width,
-            fg_color=fg_color,
-            border_color=border_color,
-        )
-        # Init variables
-        self.rel_start = rel_start
-        self.rel_end = rel_end
-        self.rel_width = rel_width
-        self.rel_height = rel_height
-        self.anchor = anchor
-        self.delta = tuple(
-            (self.rel_end[k] - self.rel_start[k]) / animation_steps for k in range(2)
-        )
-        self.actual_pos = self.rel_start
-        self.move_to_end = False
-        self.prev_move = None  # To cancel mid animation
-        # Init and place buttons
-        self.move_widget(self.rel_start)
-
-    def move_widget(self, rel_pos: Tuple[float, float], lift: bool = True):
-        if rel_pos in (self.rel_start, self.rel_end):
-            pos_bound_x = rel_pos[0] + self.rel_width
-            pos_bound_y = rel_pos[1] + self.rel_height
-            if (rel_pos[0] < 0 or pos_bound_x > 1) or (
-                pos_bound_y < 0 or pos_bound_y > 1
-            ):
-                self.place_forget()
-                return
-        self.place(
-            relx=rel_pos[0],
-            rely=rel_pos[1],
-            relwidth=self.rel_width,
-            relheight=self.rel_height,
-            anchor=self.anchor,
-        )
-        if lift:
-            self.lift()
-
-    def _next_pos(self, dir: int):
-        delta = self.delta[dir]
-        actual_pos = self.actual_pos[dir]
-        if delta == 0:
-            return actual_pos
-        if self.move_to_end:
-            actual_pos += delta
-            return (
-                max(self.rel_end[dir], actual_pos)
-                if delta < 0
-                else min(self.rel_end[dir], actual_pos)
-            )
-        actual_pos -= delta
-        return (
-            min(self.rel_start[dir], actual_pos)
-            if delta < 0
-            else max(self.rel_start[dir], actual_pos)
-        )
-
-    def _move(self):
-        self.actual_pos = tuple(self._next_pos(dir) for dir in range(2))
-        self.move_widget(self.actual_pos)
-        if self.actual_pos not in (self.rel_start, self.rel_end):
-            # self.move_widget(self.actual_pos)
-            self.after(10, self._move)
-        else:
-            self.prev_move = None
-
-    def move(self):
-        if self.prev_move:
-            self.after_cancel(self.prev_move)
-        self.move_to_end = not self.move_to_end
-        self._move()
-
-    def quick_move(self):
-        if self.prev_move:
-            self.after_cancel(self.prev_move)
-        self.actual_pos = self.rel_start if self.move_to_end else self.rel_end
-        self.move_widget(self.actual_pos)
-        self.move_to_end = not self.move_to_end
-
 
 class SelectionBox(ctk.CTkFrame):
     def __init__(
@@ -507,10 +525,12 @@ class SelectionBox(ctk.CTkFrame):
             return -1
 
     def get_value(self):
+        """Obtains the current value selected"""
         curr_choice = self._index(self.option_names, self.option_select.get())
         return None if curr_choice == -1 else self.option_values[curr_choice]
 
     def get_name(self):
+        """Obtains the name of the current value selected"""
         curr_choice = self._index(self.option_names, self.option_select.get())
         return None if curr_choice == -1 else self.option_names[curr_choice]
 
@@ -525,13 +545,16 @@ class SelectionBox(ctk.CTkFrame):
         return self.option_names[opt_id]
 
     def modify_default(self, value):
+        """Modifies the default selected value"""
         self.default_value = self._get_option_name(value)
         self.option_select.set(self.default_value)
 
     def set_value(self, value):
+        """Sets the current value to value"""
         self.option_select.set(self._get_option_name(value))
 
     def set_default(self):
+        """Sets the selection box to the default value"""
         self.set_value(self.default_value)
 
 
@@ -612,30 +635,36 @@ class SelectionPanel(SlidingFrame):
         cancel_button.grid(row=num_rows, column=1, sticky="sew", padx=PADX, pady=PADY)
 
     def get_values(self):
+        """Obtains all the values selected in the selection boxes"""
         return {
             opt_id: opt_box.get_value() for opt_id, opt_box in self.option_dict.items()
         }
 
     def get_names(self):
+        """Obtains all the names selected in the selection boxes"""
         return {
             opt_id: opt_box.get_name() for opt_id, opt_box in self.option_dict.items()
         }
 
     def set_default(self):
+        """Sets the default value for all the selection boxes"""
         for sel_box in self.option_dict.values():
             sel_box.set_default()
         self.curr_selection = self.get_values()
 
     def update_default(self):
+        """Updates to the default value all the selections"""
         for opt_id, value in self.curr_selection:
             self.option_dict[opt_id].modify_default(value)
 
     def accept_selection(self):
+        """Updates all the selections to the chosen ones"""
         self.quick_move()
         self.curr_selection = self.get_values()
         self.accept_function()
 
     def cancel_selection(self):
+        """Resets all the selections to their default value"""
         self.move()
         for opt_id, value in self.curr_selection.items():
             self.option_dict[opt_id].set_value(value)
@@ -703,6 +732,7 @@ class ExportPanel(SlidingFrame):
         cancel_button.grid(row=2, column=1, sticky="sew", padx=PADX, pady=PADY)
 
     def export_file(self):
+        """Export the file with the selected file name and path"""
         file_name = self.file_input.get_file_name()
         if not file_name:
             self.quick_move()

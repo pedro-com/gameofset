@@ -111,11 +111,9 @@ class GamePanel(ctk.CTkFrame):
                     )
                     card = picker_window.show()[0]
                     found_card = card is not None and self.game.guess_hold_card(card)
-                card_id, card_image = next(
-                    self.set_painter.generate_cards(
+                card_id, card_image = self.set_painter.generate_cards(
                         self.content_panel, (card,), card_function=self.select_card
-                    )
-                )
+                    )[0]
                 self.content_cards[card_id] = (card_pos[-1], card_image)
                 card_image.grid(
                     row=pos[0], column=pos[1], padx=PADX, pady=PADY, sticky="nsew"

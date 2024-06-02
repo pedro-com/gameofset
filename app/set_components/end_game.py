@@ -5,6 +5,11 @@ from .game_settings import *
 
 
 class EndGame(SETGame):
+    """
+    SETGame implements the logic for a solitary game of SET.
+    - end_guess_score: The score gained if the hold card is guessed.
+    - hold_card
+    """
     def __init__(
         self,
         n_attributes: int,

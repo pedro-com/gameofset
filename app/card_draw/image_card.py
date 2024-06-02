@@ -1,11 +1,11 @@
-from typing import Literal, Callable, Dict, Any, Tuple
+from typing import Literal, Callable, Tuple
 from random import choices
 from string import ascii_letters, digits
-from tkinter import Canvas, StringVar
+from tkinter import Canvas
 from PIL import Image, ImageTk
 import customtkinter as ctk
 
-from app_content.custom_widgets import SelectionPanel, SlidingFrame, custom_button
+from app_content.custom_widgets import SelectionPanel, custom_button
 from .draw_settings import *
 from settings import *
 
@@ -14,10 +14,8 @@ CARD_IMAGES = {}
 LETTER_CHOICES = ascii_letters + digits
 N = 8
 
-
 def random_id(k: int):
     return "".join(choices(LETTER_CHOICES, k=k))
-
 
 class ImageCard(Canvas):
     def __init__(
@@ -55,21 +53,28 @@ class ImageCard(Canvas):
             self.bind("<Button>", self.select_card)
 
     def _get_image(self, image):
+        """
+        Obtains the image of the card, creating an empty image if no image is associated with it, a path to the
+        image or a Pillow image.
+        """
         if image is None:
             return Image.new("RGBA", (CARD_WIDTH, CARD_HEIGHT), color=WHITE)
         return Image.open(image) if isinstance(image, str) else image
 
     def update_image(self, image):
+        """Update the image associated to the card"""
         self.image = self._get_image(image)
         self.event_generate("<Configure>")
 
     def select_card(self, event):
+        """Function associated to clicking the card, if the card is acting as a button"""
         activated = self.valid_selection()
         if not activated:
             return
         self.change_selection()
 
     def change_selection(self):
+        """Changes the selection of the card"""
         if self.selected:
             self.configure(highlightbackground=None, highlightthickness=0)
         else:
@@ -79,6 +84,7 @@ class ImageCard(Canvas):
         self.selected = not self.selected
 
     def update_wait(self, event):
+        """Updates the image size, after waitint for 0ms, to avoid lagging the interface"""
         if self.prev_wait is not None:
             self.after_cancel(self.prev_wait)
         self.prev_wait = self.after(
@@ -91,6 +97,7 @@ class ImageCard(Canvas):
         )
 
     def update_size_ratio(self, event):
+        """Updates the image size taking into consideration the size ratio of the canvas"""
         self.prev_wait = None
         if self.image_tk is not None:
             self.delete(self.image_tk)
@@ -115,6 +122,7 @@ class ImageCard(Canvas):
         )
 
     def update_size_fit(self, event):
+        """Updates the image to fit the Canvas"""
         self.prev_wait = None
         if self.image_tk is not None:
             self.delete(self.image_tk)
@@ -131,6 +139,7 @@ class ImageCard(Canvas):
         )
 
     def destroy(self):
+        """Destroy the Widget"""
         if self.image_id in CARD_IMAGES:
             del CARD_IMAGES[self.image_id]
         super().destroy()
@@ -195,10 +204,12 @@ class CardPicker(ctk.CTkFrame):
         self.place_card()
 
     def set_card_generator(self, card_generator):
+        """Set the card graphics generator"""
         self.card_generator = card_generator
         self.place_card()
 
     def selected_card(self):
+        """Returns the card that was selected"""
         curr_picks = self.picker_slide.get_values()
         card = tuple(curr_picks[att_id] for att_id in self.pos_attributes)
         any_is_none = any(c is None for c in card)
@@ -207,6 +218,7 @@ class CardPicker(ctk.CTkFrame):
         return card
 
     def place_card(self):
+        """Updates the ImageCard Widget with the new card selection"""
         if self.card_picked is not None:
             self.card_picked.destroy()
         self.card_picked = self.card_generator(self, self.curr_card)
@@ -215,19 +227,23 @@ class CardPicker(ctk.CTkFrame):
         )
 
     def reset_pick(self):
+        """Resets the pick to no card selected"""
         self.picker_slide.set_default()
         self.curr_card = None
         self.place_card()
 
     def update_pick(self):
+        """Updates the card pick in the widget"""
         self.curr_card = self.selected_card()
         self.place_card()
 
     def set_curr_card(self, card: Tuple[int]):
+        """Updates the ImageCard with the passed card"""
         self.curr_card = card
         self.place_card()
 
     def get_card(self):
+        """Returns the card value of the card that was picked"""
         return self.curr_card
 
 
@@ -256,7 +272,7 @@ class PickerWindow(ctk.CTkToplevel):
         self.rowconfigure(0, weight=5, uniform="a")
         self.rowconfigure(1, weight=1, uniform="a")
         self.columnconfigure(0, weight=1, uniform="a")
-
+        # Window widgets
         self.card_input = CardPicker(
             self,
             n_attributes,
@@ -273,17 +289,22 @@ class PickerWindow(ctk.CTkToplevel):
         accept_input = custom_button(
             self, text=button_text, command=self.select, font=button_font
         )
+        # Widget placement
         self.card_input.grid(row=0, column=0, sticky="nsew", padx=PADX, pady=PADY)
         accept_input.grid(row=1, column=0, sticky="nsew", padx=PADX, pady=PADY)
         self.selection = None
         self.image = None
 
     def select(self):
+        """Select the card from the CardPicker"""
         self.selection = self.card_input.get_card()
         self.image = self.card_input.card_picked.image
         self.destroy()
 
     def show(self):
+        """
+        Opens the PickerWindow, and closes when the card is selected or the window is manually closed
+        """
         self.deiconify()
         self.wm_protocol("WM_DELETE_WINDOW", self.destroy)
         self.wait_window(self)
@@ -316,6 +337,10 @@ class PickerButton(ImageCard):
         self.picker_window_generator = picker_window_generator
 
     def select_card(self, event):
+        """
+        Opens a PickerWindow, the user picks a card in the window, and on closing updates
+        curr_card and button image
+        """
         self.configure(state="disabled")
         picker_wd = self.picker_window_generator()
         if self.curr_card:
@@ -332,8 +357,10 @@ class PickerButton(ImageCard):
         self.command()
 
     def reset_button(self):
+        """Resets the button value to None and its image to an empty image"""
         self.update_image(None)
         self.curr_card = None
 
     def get_card(self):
+        """Obtains the current value of the button"""
         return self.curr_card

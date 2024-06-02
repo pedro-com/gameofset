@@ -4,11 +4,11 @@ ATTRIBUTE_ORDER = ("n_shapes", "color", "shape", "shape_fill")
 ATTRIBUTE_VALUES = (
     (1, 2, 3, 4, 5),  # Number of shapes
     (
-        (255, 0, 0, 255),
-        (0, 255, 0, 255),
-        (0, 0, 255, 255),
-        (0, 255, 255, 255),
-        (255, 0, 255, 255),
+        (255, 64, 64, 255),
+        (64, 255, 64, 255),
+        (64, 64, 255, 255),
+        (64, 255, 255, 255),
+        (255, 64, 255, 255),
     ),  # Available colors
     ("circle", "squiggle", "diamond", "square", "triangle"),  # Available shapes
     ("fill", "empty", "stripped_v", "circle_p", "stripped_h"),  # Available patterns
@@ -43,6 +43,7 @@ BD_WIDTH = 5
 
 # Card Structure
 WHITE = (255, 255, 255, 255)
+BORDER_COLOR = (0, 0, 0, 64)
 ELEMENT_WIDTH = 300
 ELEMENT_HEIGHT = 200
 ELEMENT_PADX = 20
